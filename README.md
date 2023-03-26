@@ -6,14 +6,14 @@ Remember that developing a model based on data **you** generated via model API m
 
 # Usage
 
-1. Clone the repo
+1. Clone the repo:
 `git clone https://github.com/mobarski/alpaca-libre && cd alpaca-libre`
-2. Install required python modules
+2. Install required python modules:
 `pip install -r requirements.txt`
 3. View / edit generate.py
-4. Set API_KEY
+4. Set API_KEY:
 `export OPENAI_KEY=...`
-5. Run the script
+5. Run the script:
 `python3 generate.py`
 
 # References
