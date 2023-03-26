@@ -11,7 +11,7 @@ Here are the requirements:
 6. Not all instructions require input. For example, when a instruction asks about some general information, "what is the highest peak in the world", it is not necssary to provide a specific context. In this case, we simply put "<noinput>" in the input field.
 7. The output should be an appropriate response to the instruction and the input. Make sure the output is less than 100 words.
 
-List of 20 tasks:
+List of {{ n_tasks }} tasks:
 {% for i,task in enumerate(tasks) %}
 {% set j = randint(0, len(task['instances'])-1) %}
 # TASK {{ i+1 }}
