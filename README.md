@@ -18,8 +18,19 @@ Remember that developing a model based on data **you** generated via model API m
 
 # Attribution
 
-- `data/seed_tasks.json` - is from the Self-Instruct paper
+- `data/seed_tasks.jsonl` - is from the Self-Instruct paper
 - `data/alpaca_libre_prompt_v1.txt` - is from the Alpaca paper (with slight modfification)
+
+# Output
+
+The output file (`data/alpaca_libre_tasks_v1.jsonl`) is in the jsonl format.
+It contains one task (json object) per line.
+Each task object has the following items:
+- instruction
+- input
+- output
+- status
+- similarity
 
 # References
 
