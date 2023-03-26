@@ -1,2 +1,4 @@
 jinja2
+rouge_score
+tqdm
 git+https://github.com/mobarski/ai-bricks.git
