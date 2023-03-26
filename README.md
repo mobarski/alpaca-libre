@@ -19,7 +19,7 @@ Remember that developing a model based on data **you** generated via model API m
 # Attribution
 
 - `data/seed_tasks.json` - is from the Self-Instruct paper
-- `data/alpaca_libre_prompt*.txt` - is from the Alpaca paper (with slight modfification)
+- `data/alpaca_libre_prompt_v1.txt` - is from the Alpaca paper (with slight modfification)
 
 # References
 
