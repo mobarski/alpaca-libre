@@ -25,9 +25,11 @@ def random_seed_tasks(n):
 
 import jinja2
 def render(text, **kw):
+    "Render a template with the given variables."
     return jinja2.Template(text).render(**kw)
 
 def get_prompt(version, n_examples):
+    "Get the prompt with the given version and number of example tasks."
     examples = random_seed_tasks(n_examples)
     template = open(PROMPT_PATH.replace('{{version}}',version)).read()
     return render(template, tasks=examples, n_tasks=N_TASKS,
@@ -37,7 +39,8 @@ def get_prompt(version, n_examples):
 
 import re
 
-def postproc_status(text):
+def qa_status(text):
+    "Get quality assurance status for the given instruction."
     blacklist = ["image","images","graph","graphs","picture","pictures","file","files",
                  "map","maps","draw","plot","go to","video","audio","music",
                  "flowchart","diagram",]
@@ -61,15 +64,17 @@ def postproc_status(text):
 output_re = re.compile(r'(\d+)\nInstruction: (.*)\nInput: (.*)\nOutput: (.*)', re.MULTILINE)
 
 def parse_one_task(text):
+    "Parse one task from the output, returning (id, instruction, input, output)."
     groups = output_re.findall(text)
     if not groups:
         return '','ERROR',text,''
     return groups[0]
 
 def parse_all_tasks(text):
+    "Parse all tasks from the output, returning a list of dicts."
     xxx = re.split('# TASK ', text)[1:]
     zzz = [parse_one_task(x) for x in xxx]
-    vvv = [{'instruction':x[1], 'input':x[2], 'output':x[3], 'status':postproc_status(x[1])} for x in zzz]
+    vvv = [{'instruction':x[1], 'input':x[2], 'output':x[3], 'status':qa_status(x[1])} for x in zzz]
     pprint(vvv)
 
 # ===[ MAIN ]=======================================================================================
