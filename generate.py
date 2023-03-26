@@ -1,11 +1,13 @@
 from pprint import pprint
 
+# TODO: parallelize main loop
+
 """
 # FILE SECTIONS:
 - CONFIG     - configuration variables
 - SEEDS      - tasks from the Self-Instruct paper
 - PROMPT     - prompt generation
-- STATUS     - quality assurance status
+- STATUS     - quality control status
 - PARSING    - model output parsing
 - SIMILARITY - similarity calculation
 - OUTPUT     - output file generation
@@ -55,8 +57,8 @@ def get_prompt(n_examples):
 
 import re
 
-def qa_status(text):
-    "Get quality assurance status for the given instruction. Anything other than 'ok' is bad."
+def qc_status(text):
+    "Get quality control status for the given instruction. Anything other than 'ok' is bad."
     blacklist = ["image","images","graph","graphs","picture","pictures","file","files",
                  "map","maps","draw","plot","go to","video","audio","music",
                  "flowchart","diagram",]
@@ -91,7 +93,7 @@ def parse_all_tasks(text):
     raw_tasks = re.split('# TASK ', text)[1:]
     parsed_tasks = [parse_one_task(x) for x in raw_tasks]
     tasks = [{'instruction':x[1], 'input':x[2],
-              'output':x[3], 'status':qa_status(x[1])} for x in parsed_tasks]
+              'output':x[3], 'status':qc_status(x[1])} for x in parsed_tasks]
     return tasks
 
 # ===[ SIMILARITY ]=================================================================================
@@ -164,6 +166,6 @@ usd_per_task = (stats['cost']/cnt_ok) if cnt_ok else None
 sec_per_task = (stats['rtt']/cnt_ok)  if cnt_ok else None
 
 pprint(cnt)
-print(resp['cost'], resp['rtt'], resp['usage'])
+print(stats['cost'], stats['rtt'], stats['usage'])
 print('usd_per_ok_task', usd_per_task)
 print('sec_per_ok_task', sec_per_task)
