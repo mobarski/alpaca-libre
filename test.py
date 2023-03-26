@@ -29,6 +29,12 @@ def get_prompt(version, n_examples):
     template = open(PROMPT_PATH.replace('{{version}}',version)).read()
     return render(template, tasks=examples, enumerate=enumerate, randint=random.randint, len=len)
 
+# ===[ FILTERING ]===
+
+import re
+blacklist = ["image","images","graph","graphs","picture","pictures","file","files","map","maps","draw","plot","go to","video","audio","music","flowchart","diagram",]
+blacklist_re = re.compile(r'\b(' + '|'.join(blacklist) + r')\b', re.IGNORECASE)
+
 ###
 
 from pprint import pprint
