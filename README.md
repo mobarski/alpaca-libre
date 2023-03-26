@@ -2,7 +2,7 @@
 
 Small research project - how much it would cost to create Alpaca-like dataset using slightly different approach. **All data byproducts are CC0-licensed**.
 
-Remember that developing a model based on data **you** generated via model API might violate the terms of service of that model API provider.
+Remember that developing a model based on data **you** generated via model API might violate the terms of service of the model API provider.
 
 # References
 
