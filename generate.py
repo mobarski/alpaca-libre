@@ -20,7 +20,7 @@ from pprint import pprint
 N_EXAMPLES  = 4 # number of example tasks to include in the prompt
 N_TASKS     = 20 # total number of tasks (including examples) per ???
 N_COMPLETE  = 2 # number of completions to request from GPT-3
-N_TURNS     = 40 # number of shots to api
+N_TURNS     = 4 # number of shots to api
 TEMPERATURE = 1.0 # do not use 0 when n=1 or you will get duplicates
 SIMILARITY_THRESHOLD = 0.7 # similarity threshold for filtering
 RANDOM_SEED = None
@@ -167,6 +167,6 @@ usd_per_task = (stats['cost']/cnt_ok) if cnt_ok else None
 sec_per_task = (stats['rtt']/cnt_ok)  if cnt_ok else None
 
 pprint(cnt)
-print(stats['cost'], stats['rtt'], stats['usage'])
+print(stats['cost'], stats['rtt'], stats['total_tokens'])
 print('usd_per_ok_task', usd_per_task)
 print('sec_per_ok_task', sec_per_task)
