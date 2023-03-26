@@ -1,6 +1,7 @@
 from pprint import pprint
 
 # TODO: parallelize main loop
+# TODO: parallelize similarit check
 
 """
 # FILE SECTIONS:
