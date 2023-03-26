@@ -7,8 +7,7 @@ Remember that developing a model based on data **you** generated via model API m
 # Usage
 
 1. Clone the repo
-`git clone https://github.com/mobarski/alpaca-libre`
-`cd alpaca-libre`
+`git clone https://github.com/mobarski/alpaca-libre && cd alpaca-libre`
 2. Install required python modules
 `pip install -r requirements.txt`
 3. View / edit generate.py
