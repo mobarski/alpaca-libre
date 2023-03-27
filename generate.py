@@ -1,7 +1,6 @@
 from pprint import pprint
 
-# TODO: parallelize main loop
-# TODO: parallelize similarit check
+# TODO: parallelize similarit check / replace with vector index
 
 """
 # FILE SECTIONS:
@@ -18,15 +17,16 @@ from pprint import pprint
 # ===[ CONFIG ]=====================================================================================
 
 N_EXAMPLES  = 4 # number of example tasks to include in the prompt
-N_TASKS     = 20 # total number of tasks (including examples) per ???
+N_TASKS     = 20 # total number of tasks (including examples) per completion
 N_COMPLETE  = 2 # number of completions to request from GPT-3
-N_TURNS     = 4 # number of shots to api
+N_TURNS     = 40 # number of shots to api
+N_WORKERS   = 4 # number of parallel workers
 TEMPERATURE = 1.0 # do not use 0 when n=1 or you will get duplicates
 SIMILARITY_THRESHOLD = 0.7 # similarity threshold for filtering
-RANDOM_SEED = None
+RANDOM_SEED = None # !!! not compatible with parallel workers !!!
 PROMPT_PATH = 'data/alpaca_libre_prompt_v1.txt' # modified Alpaca prompt
 SEED_PATH   = 'data/seed_tasks.jsonl' # from Self-Instruct paper
-OUTPUT_PATH = 'data/alpaca_libre_tasks_v1.jsonl'
+OUTPUT_PATH = 'data/output/work/alpaca_libre_tasks_v2.jsonl'
 
 # ===[ SEEDS ]======================================================================================
 
@@ -54,15 +54,17 @@ def get_prompt(n_examples):
     return render(template, tasks=examples, n_tasks=N_TASKS,
                   enumerate=enumerate, randint=random.randint, len=len)
 
-# ===[ STATUS ]=====================================================================================
+# ===[ QUALITY CONTROL STATUS ]======================================================================
 
 import re
 
 def qc_status(text):
     "Get quality control status for the given instruction. Anything other than 'ok' is bad."
+    if text=='ERROR':
+        return 'error'
+    #
     blacklist = ["image","images","graph","graphs","picture","pictures","file","files",
-                 "map","maps","draw","plot","go to","video","audio","music",
-                 "flowchart","diagram",]
+                 "map","maps","draw","plot","go to","video","audio","music","flowchart","diagram",]
     blacklist_re = re.compile(r'\b(' + '|'.join(blacklist) + r')\b', re.IGNORECASE)
     if blacklist_re.search(text):
         return 'blacklist'
@@ -80,7 +82,7 @@ def qc_status(text):
 
 # ===[ PARSING ]====================================================================================
 
-output_re = re.compile(r'(\d+)\nInstruction: (.*)\nInput: (.*)\nOutput: (.*)', re.MULTILINE)
+output_re = re.compile(r'(\d+)\nInstruction: (.*)\nInput: (.*)\nOutput: (.*)', re.MULTILINE|re.DOTALL)
 
 def parse_one_task(text):
     "Parse one task from the output, returning (id, instruction, input, output)."
@@ -115,7 +117,7 @@ def check_similarity(tasks):
         if task['status'] == 'ok' and task['similarity'] > SIMILARITY_THRESHOLD:
             task['status'] = 'too similar'
     dt = time.time() - t0
-    print('check_similarities dt', dt) # XXX
+    print(f'check_similarities time: {dt:.1f}s') # XXX
 
 # ===[ OUTPUT ]=====================================================================================
 
@@ -126,47 +128,74 @@ def save_tasks(tasks, label=''):
         path = path.replace('.jsonl', f'-{label}.jsonl')
     with open(path, 'a') as f:
         for task in tasks:
-            f.write(json.dumps(task) + '\n')
+            t = {k:task[k] for k in['status','instruction','input','output']}
+            t['other'] = {k:task[k] for k in task if k not in ['status','instruction','input','output']}
+            f.write(json.dumps(t) + '\n')
+
+def save_resp(resp, label):
+    path = OUTPUT_PATH.replace('.jsonl', f'-{label}.jsonl')
+    with open(path, 'a') as f:
+        f.write(json.dumps(resp) + '\n')
 
 # ===[ MAIN ]=======================================================================================
 
 from tqdm import tqdm
+from multiprocessing import Pool
 from collections import Counter
 from ai_bricks.api import openai
 model = openai.model('gpt-3.5-turbo', temperature=TEMPERATURE) # API_KEY from OPENAI_KEY env var
 
-tasks = []
-stats = Counter()
-
 # MAIN LOOP
 
-for i in tqdm(range(N_TURNS)):
-    prompt = get_prompt(N_EXAMPLES)
-    resp = model.complete(prompt, n=N_COMPLETE)
+def worker(prompt):
+   return model.complete(prompt, n=N_COMPLETE)
 
-    stats['cost'] += resp['cost']
-    stats['rtt']  += resp['rtt']
-    stats['completion_tokens'] += resp['usage']['completion_tokens']
-    stats['prompt_tokens'] += resp['usage']['prompt_tokens']
-    stats['total_tokens'] += resp['usage']['total_tokens']
+def main_loop():
+    tasks = []
+    stats = Counter()
+    #
+    t0 = time.time()
+    prompts = [get_prompt(N_EXAMPLES) for _ in range(N_TURNS)]
+    pool = Pool(N_WORKERS)
+    for resp in tqdm(pool.imap_unordered(worker, prompts), total=N_TURNS, ncols=60):
+        save_resp(resp, label='raw-resp') # for debugging / crash recovery
+        stats['cost'] += resp['cost']
+        stats['rtt']  += resp['rtt']
+        stats['completion_tokens'] += resp['usage']['completion_tokens']
+        stats['prompt_tokens'] += resp['usage']['prompt_tokens']
+        stats['total_tokens'] += resp['usage']['total_tokens']
 
-    for text in resp['texts']:
-        parsed_tasks = parse_all_tasks(text)
-        save_tasks(parsed_tasks, label='tmp') # in case of crash
-        tasks.extend(parsed_tasks)
+        for text in resp['texts']:
+            parsed_tasks = parse_all_tasks(text)
+            tasks.extend(parsed_tasks)
 
-check_similarity(tasks)
-save_tasks(tasks)
+    check_similarity(tasks)
+    save_tasks(tasks)
+    total_time = time.time() - t0
 
-# SHOW STATS
+    # SHOW STATS
 
-cnt = Counter()
-cnt.update([task['status'] for task in tasks])
-cnt_ok = cnt.get('ok', 0)
-usd_per_task = (stats['cost']/cnt_ok) if cnt_ok else None
-sec_per_task = (stats['rtt']/cnt_ok)  if cnt_ok else None
+    cnt = Counter()
+    cnt.update([task['status'] for task in tasks])
+    cnt_ok = cnt.get('ok', 0)
 
-pprint(cnt)
-print(stats['cost'], stats['rtt'], stats['total_tokens'])
-print('usd_per_ok_task', usd_per_task)
-print('sec_per_ok_task', sec_per_task)
+    print()
+    pprint(cnt)
+    print()
+    print(f'TOTAL TASKS: {len(tasks)}')
+    print(f'STATUS=OK: {cnt_ok} -> {100*cnt_ok/len(tasks):.1f}%')
+    print()
+    print(f'TOTAL TOKENS: {stats["total_tokens"]}')
+    print(f'TOTAL TIME: {total_time:.1f}s')
+    print(f'TOTAL RTT: {stats["rtt"]:.1f}s')
+    print(f'TOTAL COST: ${stats["cost"]:.3f}')
+    print()
+    print(f'RTT SECONDS per ok task: {stats["rtt"]/cnt_ok:.2f}s')
+    print(f'SECONDS per ok task: {total_time/cnt_ok:.2f}s')
+    print(f'TOKENS per RTT second: {stats["total_tokens"]/stats["rtt"]:.1f}')
+    print(f'TOKENS per second: {stats["total_tokens"]/total_time:.1f}')
+    print()
+    print(f'USD per 1k ok tasks: ${1000*stats["cost"]/cnt_ok:.3f}')
+
+if __name__ == '__main__':
+    main_loop()

@@ -4,6 +4,8 @@ Small research project - how much it would cost to create Alpaca-like dataset us
 
 Remember that developing a model based on data **you** generated via model API might violate the terms of service of the model API provider.
 
+![alpaca on the Altiplano grasslands with the Statue of Liberty in the background](assets/alpaca-libre-cover.jpg)
+
 # Usage
 
 1. Clone the repo:
@@ -26,11 +28,11 @@ Remember that developing a model based on data **you** generated via model API m
 The output file (`data/alpaca_libre_tasks_v1.jsonl`) is in the jsonl format.
 It contains one task (json object) per line.
 Each task object has the following items:
+- status - anything other than 'ok' is bad
 - instruction
 - input
 - output
-- status
-- similarity
+- other
 
 # References
 
