@@ -25,7 +25,7 @@ Remember that developing a model based on data **you** generated via model API m
 
 # Output
 
-The output file (`data/alpaca_libre_tasks_v1.jsonl`) is in the jsonl format.
+The output file is in the jsonl format.
 It contains one task (json object) per line.
 Each task object has the following items:
 - status - anything other than 'ok' is bad
@@ -46,3 +46,14 @@ Papers:
 - https://arxiv.org/abs/2212.10560
 - https://arxiv.org/abs/2212.09689
 
+
+# Changelog
+
+- **0.3**
+  - parallel main loop
+  - better cli output
+  - output format change (everythig not essential is placed in the "other" object)
+  - basic output quality check
+  - fix: multiline input/output handling
+  - fix: no initial space / empty section handling
+  - fix: <noinput>

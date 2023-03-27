@@ -26,7 +26,7 @@ SIMILARITY_THRESHOLD = 0.7 # similarity threshold for filtering
 RANDOM_SEED = None # !!! not compatible with parallel workers !!!
 PROMPT_PATH = 'data/alpaca_libre_prompt_v1.txt' # modified Alpaca prompt
 SEED_PATH   = 'data/seed_tasks.jsonl' # from Self-Instruct paper
-OUTPUT_PATH = 'data/output/work/alpaca_libre_tasks_v2.jsonl'
+OUTPUT_PATH = 'data/output/work/alpaca_libre_tasks_v3.jsonl'
 
 # ===[ SEEDS ]======================================================================================
 
@@ -54,11 +54,21 @@ def get_prompt(n_examples):
     return render(template, tasks=examples, n_tasks=N_TASKS,
                   enumerate=enumerate, randint=random.randint, len=len)
 
-# ===[ QUALITY CONTROL STATUS ]======================================================================
+# ===[ STATUS ]=====================================================================================
 
 import re
 
-def qc_status(text):
+def qc_status(instruction, input, output):
+    "Get quality control status for the given task. Anything other than 'ok' is bad."
+    instruction_status = qc_status_instruction(instruction)
+    if instruction_status != 'ok':
+        return instruction_status
+    output_status = qc_status_output(output)
+    if output_status != 'ok':
+        return output_status
+    return 'ok'
+
+def qc_status_instruction(text):
     "Get quality control status for the given instruction. Anything other than 'ok' is bad."
     if text=='ERROR':
         return 'error'
@@ -80,23 +90,34 @@ def qc_status(text):
         return 'too long'
     return 'ok'
 
+def qc_status_output(text):
+    "Get quality control status for the given output. Anything other than 'ok' is bad."
+    if text.strip() == '':
+        return 'empty'
+    return 'ok'
+
 # ===[ PARSING ]====================================================================================
 
-output_re = re.compile(r'(\d+)\nInstruction: (.*)\nInput: (.*)\nOutput: (.*)', re.MULTILINE|re.DOTALL)
+output_re = re.compile(r'(\d+)\nInstruction:(.*)\nInput:(.*)\nOutput:(.*)', re.MULTILINE|re.DOTALL)
 
 def parse_one_task(text):
     "Parse one task from the output, returning (id, instruction, input, output)."
     groups = output_re.findall(text)
     if not groups:
         return '','ERROR',text,''
-    return groups[0]
+    id,inst,input,output = groups[0]
+    inst = re.sub('^ ','', inst)
+    input = re.sub('^ ','', input)
+    output = re.sub('^ ','', output)
+    input = "" if input.lower().strip() in ('<noinput>','"<noinput>"') else input
+    return id,inst,input,output
 
 def parse_all_tasks(text):
     "Parse all tasks from the output, returning a list of dicts."
     raw_tasks = re.split('# TASK ', text)[1:]
     parsed_tasks = [parse_one_task(x) for x in raw_tasks]
     tasks = [{'instruction':x[1], 'input':x[2],
-              'output':x[3], 'status':qc_status(x[1])} for x in parsed_tasks]
+              'output':x[3], 'status':qc_status(x[1],x[2],x[3])} for x in parsed_tasks]
     return tasks
 
 # ===[ SIMILARITY ]=================================================================================
