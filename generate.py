@@ -16,17 +16,21 @@ from pprint import pprint
 
 # ===[ CONFIG ]=====================================================================================
 
+# TASKS_PER_TURN = N_COMPLETE * (N_TASKS-N_EXAMPLES)
+# TOTAL_TURNS    = N_ROUNDS * N_TURNS
+
 N_EXAMPLES  = 4 # number of example tasks to include in the prompt
 N_TASKS     = 20 # total number of tasks (including examples) per completion
 N_COMPLETE  = 2 # number of completions to request from GPT-3
-N_TURNS     = 40 # number of shots to api
-N_WORKERS   = 4 # number of parallel workers
+N_ROUNDS    = 12 # number of rounds to run
+N_TURNS     = 60 # number of shots to api per round
+N_WORKERS   = 12 # number of parallel workers
 TEMPERATURE = 1.0 # do not use 0 when n=1 or you will get duplicates
 SIMILARITY_THRESHOLD = 0.7 # similarity threshold for filtering
 RANDOM_SEED = None # !!! not compatible with parallel workers !!!
 PROMPT_PATH = 'data/alpaca_libre_prompt_v1.txt' # modified Alpaca prompt
 SEED_PATH   = 'data/seed_tasks.jsonl' # from Self-Instruct paper
-OUTPUT_PATH = 'data/output/work/alpaca_libre_tasks_v3.jsonl'
+OUTPUT_PATH = 'data/output/alpaca_libre_tasks_v4.jsonl'
 
 # ===[ SEEDS ]======================================================================================
 
@@ -58,11 +62,17 @@ def get_prompt(n_examples):
 
 import re
 
+# variations of <nooutput> and N/A 
+nooutput_re = re.compile(r'"?\s*(?:[<]?\s*no[ _-]*output\s*[>]?|\s*N\s*/\s*A\s*)\s*"?', re.IGNORECASE)
+
 def qc_status(instruction, input, output):
     "Get quality control status for the given task. Anything other than 'ok' is bad."
     instruction_status = qc_status_instruction(instruction)
     if instruction_status != 'ok':
         return instruction_status
+    input_status = qc_status_input(input)
+    if input_status != 'ok':
+        return input_status
     output_status = qc_status_output(output)
     if output_status != 'ok':
         return output_status
@@ -90,26 +100,38 @@ def qc_status_instruction(text):
         return 'too long'
     return 'ok'
 
+def qc_status_input(text):
+    "Get quality control status for the given input. Anything other than 'ok' is bad."
+    blacklist = ['http:','https:']
+    blacklist_re = re.compile(r'\b(' + '|'.join(blacklist) + r')', re.IGNORECASE)
+    if blacklist_re.search(text):
+        return 'blacklist'
+    return 'ok'
+
 def qc_status_output(text):
     "Get quality control status for the given output. Anything other than 'ok' is bad."
     if text.strip() == '':
         return 'empty'
+    if nooutput_re.search(text.strip()):
+        return 'nooutput'
     return 'ok'
 
 # ===[ PARSING ]====================================================================================
 
-output_re = re.compile(r'(\d+)\nInstruction:(.*)\nInput:(.*)\nOutput:(.*)', re.MULTILINE|re.DOTALL)
+task_re = re.compile(r'(\d+)\s*\nInstruction:(.*)\nInput:(.*)\nOutput:(.*)', re.MULTILINE|re.DOTALL)
+# variations of <noinput> and N/A 
+noinput_re = re.compile(r'"?\s*(?:[<]?\s*no[ _-]*input\s*[>]?|\s*N\s*/\s*A\s*)\s*"?', re.IGNORECASE)
 
 def parse_one_task(text):
     "Parse one task from the output, returning (id, instruction, input, output)."
-    groups = output_re.findall(text)
+    groups = task_re.findall(text)
     if not groups:
         return '','ERROR',text,''
     id,inst,input,output = groups[0]
     inst = re.sub('^ ','', inst)
     input = re.sub('^ ','', input)
     output = re.sub('^ ','', output)
-    input = "" if input.lower().strip() in ('<noinput>','"<noinput>"') else input
+    input = "" if noinput_re.search(input.strip()) else input
     return id,inst,input,output
 
 def parse_all_tasks(text):
@@ -128,17 +150,15 @@ scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
 
 def check_similarity(tasks):
     "Check similarity between tasks. Set status to 'too similar' if needed. WARNING: quadratic complexity."
-    t0 = time.time()
     instructions = [task['instruction'] for task in tasks]
     instructions_tokens = [scorer._tokenizer.tokenize(inst) for inst in instructions]
-    for i, task in enumerate(tasks):
+    for i, task in tqdm(enumerate(tasks), total=len(tasks),
+                        desc='similarity', ncols=80, position=2):
         tokens = instructions_tokens[i]
         similarity = [rouge_scorer._score_lcs(tokens, x).fmeasure for x in instructions_tokens]
         task['similarity'] = round(list(sorted(similarity, reverse=True))[1], 3)
         if task['status'] == 'ok' and task['similarity'] > SIMILARITY_THRESHOLD:
             task['status'] = 'too similar'
-    dt = time.time() - t0
-    print(f'check_similarities time: {dt:.1f}s') # XXX
 
 # ===[ OUTPUT ]=====================================================================================
 
@@ -161,6 +181,7 @@ def save_resp(resp, label):
 # ===[ MAIN ]=======================================================================================
 
 from tqdm import tqdm
+from retry import retry
 from multiprocessing import Pool
 from collections import Counter
 from ai_bricks.api import openai
@@ -168,30 +189,36 @@ model = openai.model('gpt-3.5-turbo', temperature=TEMPERATURE) # API_KEY from OP
 
 # MAIN LOOP
 
+@retry(tries=6, delay=1, backoff=2)
 def worker(prompt):
    return model.complete(prompt, n=N_COMPLETE)
 
 def main_loop():
-    tasks = []
     stats = Counter()
+    tasks = []
     #
     t0 = time.time()
-    prompts = [get_prompt(N_EXAMPLES) for _ in range(N_TURNS)]
     pool = Pool(N_WORKERS)
-    for resp in tqdm(pool.imap_unordered(worker, prompts), total=N_TURNS, ncols=60):
-        save_resp(resp, label='raw-resp') # for debugging / crash recovery
-        stats['cost'] += resp['cost']
-        stats['rtt']  += resp['rtt']
-        stats['completion_tokens'] += resp['usage']['completion_tokens']
-        stats['prompt_tokens'] += resp['usage']['prompt_tokens']
-        stats['total_tokens'] += resp['usage']['total_tokens']
+    for _ in tqdm(range(N_ROUNDS), total=N_ROUNDS,
+                  desc='rounds', ncols=80, position=0):
+        batch = []
+        prompts = [get_prompt(N_EXAMPLES) for _ in range(N_TURNS)]
+        for resp in tqdm(pool.imap_unordered(worker, prompts), total=N_TURNS,
+                         desc='turns', ncols=80, position=1):
+            save_resp(resp, label='raw-resp') # for debugging / crash recovery
+            stats['cost'] += resp['cost']
+            stats['rtt']  += resp['rtt']
+            stats['completion_tokens'] += resp['usage']['completion_tokens']
+            stats['prompt_tokens'] += resp['usage']['prompt_tokens']
+            stats['total_tokens'] += resp['usage']['total_tokens']
 
-        for text in resp['texts']:
-            parsed_tasks = parse_all_tasks(text)
-            tasks.extend(parsed_tasks)
+            for text in resp['texts']:
+                parsed_tasks = parse_all_tasks(text)
+                batch.extend(parsed_tasks)
+                tasks.extend(parsed_tasks)
 
-    check_similarity(tasks)
-    save_tasks(tasks)
+        check_similarity(batch)
+        save_tasks(batch)
     total_time = time.time() - t0
 
     # SHOW STATS
@@ -205,6 +232,7 @@ def main_loop():
     print()
     print(f'TOTAL TASKS: {len(tasks)}')
     print(f'STATUS=OK: {cnt_ok} -> {100*cnt_ok/len(tasks):.1f}%')
+    print(f'TASKS per round: {N_TURNS * N_COMPLETE * (N_TASKS-N_EXAMPLES)}')
     print()
     print(f'TOTAL TOKENS: {stats["total_tokens"]}')
     print(f'TOTAL TIME: {total_time:.1f}s')

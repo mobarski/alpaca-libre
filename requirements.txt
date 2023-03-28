@@ -1,4 +1,5 @@
 jinja2
 rouge_score
+retry
 tqdm
 git+https://github.com/mobarski/ai-bricks.git

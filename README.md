@@ -40,6 +40,7 @@ GitHub repos:
 - https://github.com/tatsu-lab/stanford_alpaca
 - https://github.com/yizhongw/self-instruct
 - https://github.com/orhonovich/unnatural-instructions
+- https://github.com/gururise/AlpacaDataCleaned
 
 Papers:
 - https://crfm.stanford.edu/2023/03/13/alpaca.html
@@ -49,11 +50,20 @@ Papers:
 
 # Changelog
 
+- **0.4**
+  - grouping turns into rounds
+  - basic input quality check
+  - better `<noinput>` handling
+  - `<nooutput>` handling
+  - retry with backoff on API error
+  - progressbars
+  - fixed: typos in Alpaca prompt
+  - fixed: whitespace handling after task number
 - **0.3**
   - parallel main loop
   - better cli output
   - output format change (everythig not essential is placed in the "other" object)
   - basic output quality check
-  - fix: multiline input/output handling
-  - fix: no initial space / empty section handling
-  - fix: <noinput>
+  - fixed: multiline input/output handling
+  - fixed: no initial space / empty section handling
+  - fixed: `<noinput>`
