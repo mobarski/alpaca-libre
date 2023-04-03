@@ -1,8 +1,10 @@
 # Alpaca Libre
 
-Small research project - how much it would cost to create Alpaca-like dataset using slightly different approach. **All data byproducts are CC0-licensed**.
+🦙🗽 Small research project - how much it would cost to create Alpaca-like dataset using slightly different approach. **All data byproducts are CC0-licensed**.
 
-Remember that developing a model based on data **you** generated via model API might violate the terms of service of the model API provider.
+👉 [Follow me](https://twitter.com/KerbalFPV) on Twitter for news and updates.
+
+🚫 Remember that releasing a model based on data **you** generated via model API might violate the Terms of Service of the model API provider.
 
 ![alpaca on the Altiplano grasslands with the Statue of Liberty in the background](assets/alpaca-libre-cover.jpg)
 
@@ -25,14 +27,28 @@ Remember that developing a model based on data **you** generated via model API m
 
 # Output
 
-The output file is in the jsonl format.
-It contains one task (json object) per line.
-Each task object has the following items:
-- status - anything other than 'ok' is bad
-- instruction
-- input
-- output
-- other
+Files in the `data/output` directory are in the same format as original Alpaca dataset.
+
+Files in the `data/output/work` directory are in the .jsonl format and:
+
+- contain one task (JSON object) per line,
+
+- contain also tasks that failed quality checks (status!='ok')
+
+  - these tasks might be marked as 'ok' after manual inspection
+
+- each task object has the following items:
+
+  - status - anything other than 'ok' is bad
+
+  - instruction - instruction part of the prompt
+
+  - input - input part of the prompt
+
+  - output - expected output
+
+  - other - dictionary for other information (similarity, etc)
+
 
 # References
 
@@ -50,6 +66,9 @@ Papers:
 
 # Changelog
 
+- **0.4.1**
+  - v4 dataset converted into the same format as original Alpaca
+  - jsonl dataset moved into work dir
 - **0.4**
   - grouping turns into rounds
   - basic input quality check
