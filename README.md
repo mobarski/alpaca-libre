@@ -1,6 +1,8 @@
 # Alpaca Libre
 
-🦙🗽 Small research project - how much it would cost to create Alpaca-like dataset using slightly different approach. **All data byproducts are CC0-licensed**.
+🦙🗽 Small research project - how much it would cost to create Alpaca-like dataset, with 50k+ demonstrations, using slightly different approach. **All data byproducts are CC0/MIT-licensed**.
+
+🔥 The project also contains 100k+ MIT-licensed demonstrations from [Anthropics HH-RLHF repo](https://github.com/anthropics/hh-rlhf) - converted into "Alpaca compatible format".
 
 👉 [Follow me](https://twitter.com/KerbalFPV) on Twitter for news and updates.
 
@@ -57,15 +59,23 @@ GitHub repos:
 - https://github.com/yizhongw/self-instruct
 - https://github.com/orhonovich/unnatural-instructions
 - https://github.com/gururise/AlpacaDataCleaned
+- https://github.com/anthropics/hh-rlhf
 
 Papers:
 - https://crfm.stanford.edu/2023/03/13/alpaca.html
 - https://arxiv.org/abs/2212.10560
 - https://arxiv.org/abs/2212.09689
+- https://arxiv.org/abs/2204.05862
 
 
 # Changelog
 
+- **0.4.2**
+  - MIT-licensed demonstrations from [Anthropics HH-RLHF repo](https://github.com/anthropics/hh-rlhf)
+    - 104k human preferred responses from the train datasets:
+      - 41k harmless
+      - 42k helpful
+      - 21k helpful-online
 - **0.4.1**
   - v4 dataset converted into the same format as original Alpaca
   - jsonl dataset moved into work dir
