@@ -6,7 +6,9 @@
 
 👉 [Follow me](https://twitter.com/KerbalFPV) on Twitter for news and updates.
 
-🚫 Remember that releasing a model based on data **you** generated via model API might violate the Terms of Service of the model API provider.
+🚫 Remember that **releasing** a model based on data **you** generated via model API might violate the Terms of Service of the model API provider.
+
+**BTW**: [This repo](https://github.com/Reason-Wang/flan-alpaca-lora) shows how easy it is to fine-tune (PEFT=LORA) Flan-T5-* model with Alpaca-like dataset.
 
 ![alpaca on the Altiplano grasslands with the Statue of Liberty in the background](assets/alpaca-libre-cover.jpg)
 
@@ -60,6 +62,7 @@ GitHub repos:
 - https://github.com/orhonovich/unnatural-instructions
 - https://github.com/gururise/AlpacaDataCleaned
 - https://github.com/anthropics/hh-rlhf
+- https://github.com/Reason-Wang/flan-alpaca-lora
 
 Papers:
 - https://crfm.stanford.edu/2023/03/13/alpaca.html
