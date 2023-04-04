@@ -1,6 +1,6 @@
 # Alpaca Libre
 
-🦙🗽 Small research project - how much it would cost to create Alpaca-like dataset, with 50k+ demonstrations, using slightly different approach. **All data byproducts are CC0/MIT-licensed**.
+🦙🗽 Small research project - how much it would cost to create Alpaca-like dataset, with 50k+ demonstrations, using slightly different approach. **All [data byproducts](data/output) are CC0/MIT-licensed**.
 
 🔥 The project also contains 100k+ MIT-licensed demonstrations from [Anthropics HH-RLHF repo](https://github.com/anthropics/hh-rlhf) - converted into "Alpaca compatible format".
 
